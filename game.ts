@@ -1,11 +1,13 @@
-var config = {
+import Phaser, { GameObjects } from "phaser";
+
+const config = {
   type: Phaser.AUTO, // try Phaser.WEBGL, and fallback to Phaser.CANVAS
   width: 800, // desplay resolution
   height: 600,
   physics: {
     default: "arcade",
     arcade: {
-      gravity: { y: 300 },
+      gravity: { x: 0, y: 300 },
       debug: false,
     },
   },
@@ -16,18 +18,18 @@ var config = {
   },
 };
 
-var player;
-var stars;
-var bombs;
-var platforms;
-var cursors;
-var score = 0;
-var gameOver = false;
-var scoreText;
+let player: Phaser.Physics.Arcade.Sprite;
+let stars: Phaser.Physics.Arcade.Group;
+let bombs: Phaser.Physics.Arcade.Group;
+let platforms: Phaser.Physics.Arcade.StaticGroup;
+let cursors: Phaser.Types.Input.Keyboard.CursorKeys | undefined;
+let score: number = 0;
+let gameOver: boolean = false;
+let scoreText: Phaser.GameObjects.Text;
 
-var game = new Phaser.Game(config);
+const game = new Phaser.Game(config);
 
-function preload() {
+function preload(this: Phaser.Scene) {
   this.load.image("sky", "assets/sky.png"); // asset key, path to asset
   this.load.image("ground", "assets/platform.png");
   this.load.image("star", "assets/star.png");
@@ -40,7 +42,7 @@ function preload() {
   });
 }
 
-function create() {
+function create(this: Phaser.Scene) {
   //  A simple background for our game
   // game objects are positioned based on their center by default
   // (400, 300) will center this image in our 800 x 600 canvas
@@ -93,18 +95,22 @@ function create() {
   });
 
   //  Input Events
-  cursors = this.input.keyboard.createCursorKeys();
+  cursors = this.input?.keyboard?.createCursorKeys();
 
-  // //  Some stars to collect, 12 in total, evenly spaced 70 pixels apart along the x axis
+  //  Some stars to collect, 12 in total, evenly spaced 70 pixels apart along the x axis
   stars = this.physics.add.group({
     key: "star", // asset key
     repeat: 11, // repeat 11 times, we have 12 stars
     setXY: { x: 12, y: 0, stepX: 70 },
   });
 
-  stars.children.iterate(function (child) {
+  stars.children.iterate((child) => {
     //  Give each star a slightly different bounce
-    child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+    // cast the child to access the setBounceY method
+    (child as Phaser.Physics.Arcade.Image).setBounceY(
+      Phaser.Math.FloatBetween(0.4, 0.8)
+    );
+    return true;
   });
 
   bombs = this.physics.add.group();
@@ -112,7 +118,7 @@ function create() {
   //  The score
   scoreText = this.add.text(16, 16, "score: 0", {
     fontSize: "32px",
-    fill: "#000",
+    color: "#000",
   });
 
   //  Collide the player and the stars with the platforms
@@ -124,21 +130,21 @@ function create() {
   // first two parameters are the objects to check for overlap
   // third parameter is the callback function to call when the overlap occurs
   // fourth parameter is the callback to determine if the overlap should occur (if return false, the overlap is ignored)
-  this.physics.add.overlap(player, stars, collectStar, null, this);
+  this.physics.add.overlap(player, stars, collectStar, undefined, this);
 
-  this.physics.add.collider(player, bombs, hitBomb, null, this);
+  this.physics.add.collider(player, bombs, hitBomb, undefined, this);
 }
 
-function update() {
+function update(this: Phaser.Scene) {
   if (gameOver) {
     return;
   }
 
-  if (cursors.left.isDown) {
+  if (cursors?.left.isDown) {
     player.setVelocityX(-160);
 
     player.anims.play("left", true);
-  } else if (cursors.right.isDown) {
+  } else if (cursors?.right.isDown) {
     player.setVelocityX(160);
 
     player.anims.play("right", true);
@@ -148,15 +154,15 @@ function update() {
     player.anims.play("turn");
   }
 
-  if (cursors.up.isDown && player.body.touching.down) {
+  if (cursors?.up.isDown && player.body?.touching.down) {
     player.setVelocityY(-330); // negative velocity moves up
   }
 }
 
-function collectStar(player, star) {
+function collectStar(player: any, star: any) {
   // first parameter is to disable the game object (not updated and rerendered)
   // second is to hide the object from the screen
-  star.disableBody(true, true);
+  (star as Phaser.Physics.Arcade.Image).disableBody(true, true);
 
   //  Add and update the score
   score += 10;
@@ -164,18 +170,26 @@ function collectStar(player, star) {
 
   if (stars.countActive(true) === 0) {
     //  A new batch of stars to collect
-    stars.children.iterate(function (child) {
+    stars.children.iterate((child) => {
       // first three parameters to reset the position of the object (ifreset, x, y)
       // last two parameters to enable and make the object visible
-      child.enableBody(true, child.x, 0, true, true); // reset the y coordinate to 0
+      (child as Phaser.Physics.Arcade.Image).enableBody(
+        true,
+        (child as Phaser.Physics.Arcade.Image).x,
+        0,
+        true,
+        true
+      );
+      // reset the y coordinate to 0
+      return true;
     });
 
-    var x =
-      player.x < 400
+    const x =
+      (player as Phaser.Physics.Arcade.Sprite).x < 400
         ? Phaser.Math.Between(400, 800)
         : Phaser.Math.Between(0, 400);
 
-    var bomb = bombs.create(x, 16, "bomb");
+    const bomb = bombs.create(x, 16, "bomb");
     bomb.setBounce(1);
     bomb.setCollideWorldBounds(true);
     bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
@@ -183,12 +197,12 @@ function collectStar(player, star) {
   }
 }
 
-function hitBomb(player, bomb) {
+function hitBomb(player: any, _bomb: any) {
   this.physics.pause();
 
-  player.setTint(0xff0000);
+  (player as Phaser.Physics.Arcade.Sprite).setTint(0xff0000);
 
-  player.anims.play("turn");
+  (player as Phaser.Physics.Arcade.Sprite).anims.play("turn");
 
   gameOver = true;
 }
