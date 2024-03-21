@@ -1,0 +1,15 @@
+# Ignore node_modules directory
+node_modules/
+
+# Ignore dist directory
+dist/
+
+# Ignore .env files
+.env
+
+# Ignore npm debug logs and .npmrc files
+npm-debug.log*
+.npmrc
+
+# Ignore .DS_Store on MacOS
+.DS_Store
